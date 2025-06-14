@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autism Detection System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <h2>Autism Detection</h2>
+            </div>
+            <nav>
+                <ul>
+                    <li class="active"><a href="{{ url_for('home') }}">Dashboard</a></li>
+                    <li><a href="{{ url_for('analytics') }}">Analytics</a></li>
+                    <li><a href="{{ url_for('history') }}">History</a></li>
+                    {% if current_user.is_authenticated %}
+                        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                    {% else %}
+                        <li><a href="{{ url_for('login') }}">Login</a></li>
+                        <li><a href="{{ url_for('register') }}">Register</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="top-bar">
+                <div class="search-bar">
+                    <input type="text" placeholder="Search...">
+                    <button><i class="fas fa-search"></i></button>
+                </div>
+                <div class="user-info">
+                    {% if current_user.is_authenticated %}
+                        <span>Welcome, {{ current_user.username }}</span>
+                    {% else %}
+                        <span>Please <a href="{{ url_for('login') }}">login</a> to continue</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="content">
+                {% if current_user.is_authenticated %}
+                    <h1>Dashboard</h1>
+                    
+                    <!-- Stats Cards -->
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <h3>Total Analyses</h3>
+                            <p class="stat-value">{{ total_analyses if total_analyses is defined else 0 }}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Positive Cases</h3>
+                            <p class="stat-value">{{ successful_analyses if successful_analyses is defined else 0 }}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Average Confidence</h3>
+                            <p class="stat-value">{{ "%.1f"|format(avg_confidence * 100) if avg_confidence is defined else 0 }}%</p>
+                        </div>
+                    </div>
+
+                    <!-- Upload Section -->
+                    <div class="upload-section">
+                        <div class="section-header">
+                            <h2>Upload Media</h2>
+                            <p>Upload an image, use your camera, or upload a video for autism detection analysis</p>
+                        </div>
+                        
+                        <div class="upload-options">
+                            <button class="option-button" id="cameraButton">
+                                <i class="fas fa-camera"></i> Use Camera
+                            </button>
+                            <button class="option-button" id="uploadButton">
+                                <i class="fas fa-upload"></i> Upload File
+                            </button>
+                        </div>
+
+                        <!-- Camera Section -->
+                        <div class="camera-section" id="cameraSection" style="display: none;">
+                            <div class="camera-container">
+                                <video id="cameraPreview" autoplay playsinline></video>
+                                <canvas id="cameraCanvas" style="display: none;"></canvas>
+                                <div class="camera-controls">
+                                    <button id="captureButton" class="camera-button">
+                                        <i class="fas fa-camera"></i> Capture
+                                    </button>
+                                    <button id="switchCameraButton" class="camera-button">
+                                        <i class="fas fa-sync"></i> Switch Camera
+                                    </button>
+                                    <button id="closeCameraButton" class="camera-button">
+                                        <i class="fas fa-times"></i> Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="upload-area" id="dropZone">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag and drop files here or click to upload</p>
+                            <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.mp4,.avi,.mov" style="display: none;">
+                            <button class="upload-button" onclick="document.getElementById('fileInput').click()">Choose File</button>
+                        </div>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div class="results-section" id="resultsSection" style="display: none;">
+                        <div class="result-header">
+                            <h2>Analysis Results</h2>
+                            <div class="result-actions">
+                                <button class="action-button" onclick="downloadReport()">
+                                    <i class="fas fa-download"></i> Download Report
+                                </button>
+                                <button class="action-button" onclick="shareResults()">
+                                    <i class="fas fa-share"></i> Share
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="result-grid">
+                            <div class="result-card">
+                                <h3>Media Preview</h3>
+                                <div id="mediaPreview"></div>
+                            </div>
+                            <div class="result-card">
+                                <h3>Analysis Details</h3>
+                                <div class="confidence-meter">
+                                    <div class="confidence-bar" id="confidenceBar"></div>
+                                </div>
+                                <div class="details-list">
+                                    <div class="detail-item">
+                                        <span>Confidence Score:</span>
+                                        <span id="confidenceScore">0%</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span>Result:</span>
+                                        <span id="resultText">-</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span>Analysis Time:</span>
+                                        <span id="analysisTime">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="auth-message">
+                        <h2>Welcome to Autism Detection System</h2>
+                        <p>Please login or register to start using the system.</p>
+                        <div class="auth-buttons">
+                            <a href="{{ url_for('login') }}" class="btn btn-primary">Login</a>
+                            <a href="{{ url_for('register') }}" class="btn btn-secondary">Register</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Analyzing...</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script>
+        let stream = null;
+        let currentFacingMode = 'user';
+        let detectionInterval = null;
+        let isDetecting = false;
+        let detectionError = null;
+        let detectionErrorCount = 0;
+        
+        // Add status indicator to camera container
+        const cameraContainer = document.querySelector('.camera-container');
+        const statusIndicator = document.createElement('div');
+        statusIndicator.className = 'detection-status';
+        statusIndicator.innerHTML = '<i class="fas fa-circle"></i> <span>Detection Status</span>';
+        cameraContainer.appendChild(statusIndicator);
+        
+        // Camera handling functions
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: currentFacingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                const video = document.getElementById('cameraPreview');
+                video.srcObject = stream;
+                
+                // Wait for video to be ready
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        resolve();
+                    };
+                });
+                
+                document.getElementById('cameraSection').style.display = 'block';
+                document.getElementById('dropZone').style.display = 'none';
+                
+                // Start real-time detection
+                startRealTimeDetection();
+                
+                // Update status
+                updateDetectionStatus('active', 'Detection Active');
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                alert('Error accessing camera. Please make sure you have granted camera permissions.');
+                updateDetectionStatus('inactive', 'Camera Error');
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            stopRealTimeDetection();
+            document.getElementById('cameraSection').style.display = 'none';
+            document.getElementById('dropZone').style.display = 'block';
+            updateDetectionStatus('inactive', 'Detection Stopped');
+        }
+
+        function updateDetectionStatus(status, message) {
+            const statusIndicator = document.querySelector('.detection-status');
+            if (statusIndicator) {
+                statusIndicator.className = `detection-status ${status}`;
+                
+                // Add error count to message if in error state
+                if (status === 'error' && detectionErrorCount > 0) {
+                    message += ` (Error ${detectionErrorCount}/3)`;
+                }
+                
+                statusIndicator.innerHTML = `
+                    <i class="fas fa-circle"></i>
+                    <span>${message}</span>
+                    ${status === 'error' ? '<i class="fas fa-exclamation-triangle"></i>' : ''}
+                `;
+                
+                // Add visual feedback for different states
+                switch(status) {
+                    case 'active':
+                        statusIndicator.style.backgroundColor = 'rgba(46, 204, 113, 0.8)';
+                        break;
+                    case 'processing':
+                        statusIndicator.style.backgroundColor = 'rgba(241, 196, 15, 0.8)';
+                        break;
+                    case 'error':
+                        statusIndicator.style.backgroundColor = 'rgba(231, 76, 60, 0.8)';
+                        break;
+                    case 'inactive':
+                        statusIndicator.style.backgroundColor = 'rgba(149, 165, 166, 0.8)';
+                        break;
+                }
+            }
+        }
+
+        async function startRealTimeDetection() {
+            if (isDetecting) return;
+            isDetecting = true;
+            detectionError = null;
+            detectionErrorCount = 0;
+            
+            const video = document.getElementById('cameraPreview');
+            const canvas = document.getElementById('cameraCanvas');
+            const context = canvas.getContext('2d');
+            
+            // Debug information
+            console.log('Starting real-time detection...');
+            console.log('Video element:', video);
+            console.log('Canvas element:', canvas);
+            
+            // Wait for video to be properly initialized
+            if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                console.log('Waiting for video to be ready...');
+                try {
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            reject(new Error('Video initialization timeout'));
+                        }, 10000); // 10 second timeout
+                        
+                        video.onloadeddata = () => {
+                            clearTimeout(timeout);
+                            console.log('Video is now ready');
+                            console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+                            resolve();
+                        };
+                        
+                        video.onerror = (error) => {
+                            clearTimeout(timeout);
+                            reject(new Error('Video error: ' + (video.error?.message || 'Unknown error')));
+                        };
+                    });
+                } catch (error) {
+                    console.error('Error initializing video:', error);
+                    updateDetectionStatus('error', `Video Error: ${error.message}`);
+                    stopRealTimeDetection();
+                    return;
+                }
+            }
+            
+            // Set canvas dimensions to match video
+            const width = video.videoWidth || 640;
+            const height = video.videoHeight || 480;
+            canvas.width = width;
+            canvas.height = height;
+            
+            console.log(`Canvas dimensions set to: ${width}x${height}`);
+            
+            // Start detection loop
+            detectionInterval = setInterval(async () => {
+                if (!isDetecting) return;
+                
+                try {
+                    // Check if video is ready and playing
+                    if (video.readyState !== video.HAVE_ENOUGH_DATA || video.paused) {
+                        console.log('Video not ready or paused, waiting...');
+                        return;
+                    }
+                    
+                    // Verify canvas dimensions
+                    if (canvas.width === 0 || canvas.height === 0) {
+                        console.log('Invalid canvas dimensions, updating...');
+                        canvas.width = video.videoWidth || 640;
+                        canvas.height = video.videoHeight || 480;
+                    }
+                    
+                    // Draw current frame to canvas
+                    try {
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        // Verify canvas content
+                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                        if (imageData.data.every(pixel => pixel === 0)) {
+                            throw new Error('Canvas is empty (all black)');
+                        }
+                    } catch (drawError) {
+                        console.error('Error drawing to canvas:', drawError);
+                        return;
+                    }
+                    
+                    // Get frame data with quality setting
+                    let frameData;
+                    try {
+                        frameData = canvas.toDataURL('image/jpeg', 0.8);
+                        if (!frameData || frameData === 'data:,') {
+                            throw new Error('Invalid frame data generated');
+                        }
+                        // Verify frame data size
+                        const base64Length = frameData.length - (frameData.indexOf(',') + 1);
+                        if (base64Length < 1000) { // Arbitrary minimum size
+                            throw new Error('Frame data too small');
+                        }
+                    } catch (dataError) {
+                        console.error('Error getting frame data:', dataError);
+                        return;
+                    }
+                    
+                    // Show processing status
+                    updateDetectionStatus('processing', 'Processing Frame...');
+                    
+                    // Send frame for detection with timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                    
+                    try {
+                        console.log('Sending frame for detection...');
+                        const response = await fetch('/detect_frame', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ frame: frameData }),
+                            signal: controller.signal
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `Server error: ${response.status}`);
+                        }
+                        
+                        const result = await response.json();
+                        
+                        // Reset error count on successful detection
+                        detectionErrorCount = 0;
+                        
+                        // Update UI with results
+                        updateDetectionResults(result);
+                        updateDetectionStatus('active', 'Detection Active');
+                        
+                        // Log success
+                        console.log('Frame processed successfully:', result);
+                        
+                    } catch (fetchError) {
+                        clearTimeout(timeoutId);
+                        if (fetchError.name === 'AbortError') {
+                            throw new Error('Detection request timed out after 5 seconds');
+                        }
+                        throw fetchError;
+                    }
+                    
+                } catch (err) {
+                    console.error('Error in detection loop:', err);
+                    detectionError = err.message;
+                    
+                    // Update status with error
+                    updateDetectionStatus('error', `Error: ${err.message}`);
+                    
+                    // Show error in results section
+                    const resultText = document.getElementById('resultText');
+                    const confidenceScore = document.getElementById('confidenceScore');
+                    if (resultText && confidenceScore) {
+                        resultText.textContent = `Error: ${err.message}`;
+                        resultText.className = 'error';
+                        confidenceScore.textContent = 'N/A';
+                    }
+                    
+                    // Increment error count
+                    detectionErrorCount++;
+                    console.log(`Error count: ${detectionErrorCount}`);
+                    
+                    // Stop detection after 3 consecutive errors
+                    if (detectionErrorCount >= 3) {
+                        console.error('Too many consecutive errors, stopping detection');
+                        stopRealTimeDetection();
+                        
+                        // Show detailed error message
+                        const errorMessage = `
+                            Detection stopped due to multiple errors.
+                            Last error: ${err.message}
+                            
+                            Please try the following:
+                            1. Check your camera connection
+                            2. Ensure good lighting
+                            3. Try refreshing the page
+                            4. Try using a different browser
+                            5. Check browser console (F12) for more details
+                            
+                            Technical details:
+                            - Video dimensions: ${video.videoWidth}x${video.videoHeight}
+                            - Canvas dimensions: ${canvas.width}x${canvas.height}
+                            - Error count: ${detectionErrorCount}
+                            - Last error: ${err.message}
+                        `;
+                        alert(errorMessage);
+                        return;
+                    }
+                    
+                    // Add a small delay after an error
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }, 1000); // Process one frame per second
+        }
+
+        function stopRealTimeDetection() {
+            isDetecting = false;
+            detectionErrorCount = 0;
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+            updateDetectionStatus('inactive', 'Detection Stopped');
+        }
+
+        function updateDetectionResults(result) {
+            // Update confidence meter
+            const confidenceBar = document.getElementById('confidenceBar');
+            const confidenceScore = document.getElementById('confidenceScore');
+            const resultText = document.getElementById('resultText');
+            const analysisTime = document.getElementById('analysisTime');
+            
+            // Update confidence bar with animation
+            const confidence = (result.confidence * 100).toFixed(1);
+            confidenceBar.style.transition = 'width 0.5s ease-in-out';
+            confidenceBar.style.width = `${confidence}%`;
+            confidenceScore.textContent = `${confidence}%`;
+            
+            // Update result text with color coding
+            resultText.textContent = result.result;
+            // Change color based on result
+            if (result.result.includes('No Autism Detected')) {
+                resultText.className = 'positive'; // Use positive (green) for no autism
+            } else if (result.result.includes('Autism Detected')) {
+                resultText.className = 'negative'; // Use negative (red) for autism detected
+            } else {
+                resultText.className = result.confidence > 0.6 ? 'positive' : 'negative';
+            }
+            
+            // Update analysis time
+            analysisTime.textContent = new Date().toLocaleTimeString();
+            
+            // Store the analysis ID for report download
+            if (result.analysis_id) {
+                currentAnalysisId = result.analysis_id;
+                console.log('Stored analysis ID:', currentAnalysisId);
+            }
+            
+            // Show results section if hidden
+            const resultsSection = document.getElementById('resultsSection');
+            resultsSection.style.display = 'block';
+            
+            // Update preview if needed
+            const mediaPreview = document.getElementById('mediaPreview');
+            if (result.frame) {
+                mediaPreview.innerHTML = `<img src="data:image/jpeg;base64,${result.frame}" style="max-width: 100%; max-height: 300px; object-fit: contain;">`;
+            }
+            
+            // Log the result for debugging
+            console.log('Detection result:', result);
+        }
+
+        // Event listeners
+        document.getElementById('cameraButton').addEventListener('click', startCamera);
+        document.getElementById('uploadButton').addEventListener('click', () => {
+            stopCamera();
+            document.getElementById('cameraSection').style.display = 'none';
+            document.getElementById('dropZone').style.display = 'block';
+        });
+        document.getElementById('switchCameraButton').addEventListener('click', switchCamera);
+        document.getElementById('closeCameraButton').addEventListener('click', stopCamera);
+        
+        // Add error handling for camera errors
+        window.addEventListener('error', (event) => {
+            if (event.target.id === 'cameraPreview') {
+                console.error('Camera error:', event);
+                updateDetectionStatus('inactive', 'Camera Error');
+                stopCamera();
+            }
+        });
+
+        // Update the CSS for better error visibility
+        const style = document.createElement('style');
+        style.textContent = `
+            .detection-status {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                border-radius: 4px;
+                background: rgba(0, 0, 0, 0.7);
+                color: white;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                transition: all 0.3s ease;
+                z-index: 1000;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+            
+            .detection-status i {
+                font-size: 12px;
+            }
+            
+            .detection-status .fa-exclamation-triangle {
+                color: #fff;
+                margin-left: 8px;
+            }
+            
+            .detection-status.error {
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.7; }
+                100% { opacity: 1; }
+            }
+            
+            .result-text.error {
+                color: #e74c3c;
+                font-weight: bold;
+                padding: 8px;
+                background: rgba(231, 76, 60, 0.1);
+                border-radius: 4px;
+                border-left: 4px solid #e74c3c;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add debug information to the page
+        const debugInfo = document.createElement('div');
+        debugInfo.id = 'debugInfo';
+        debugInfo.style.cssText = `
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+            display: none;
+        `;
+        document.body.appendChild(debugInfo);
+
+        // Toggle debug info with Ctrl+Shift+D
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+            }
+        });
+
+        function updateDebugInfo() {
+            const video = document.getElementById('cameraPreview');
+            const canvas = document.getElementById('cameraCanvas');
+            debugInfo.innerHTML = `
+                Video: ${video.videoWidth}x${video.videoHeight}
+                Canvas: ${canvas.width}x${canvas.height}
+                State: ${isDetecting ? 'Detecting' : 'Stopped'}
+                Errors: ${detectionErrorCount}
+                Last Error: ${detectionError || 'None'}
+            `;
+        }
+
+        // Update debug info periodically
+        setInterval(updateDebugInfo, 1000);
+    </script>
+</body>
+</html> 

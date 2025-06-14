@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Autism Detection System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <h2>Autism Detection</h2>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Dashboard</a></li>
+                    <li class="active"><a href="{{ url_for('analytics') }}">Analytics</a></li>
+                    <li><a href="{{ url_for('history') }}">History</a></li>
+                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="top-bar">
+                <div class="search-bar">
+                    <input type="text" placeholder="Search...">
+                    <button><i class="fas fa-search"></i></button>
+                </div>
+                <div class="user-info">
+                    <span>Welcome, {{ current_user.username }}</span>
+                </div>
+            </div>
+
+            <div class="content">
+                <h1>Analytics Dashboard</h1>
+                
+                <!-- Stats Cards -->
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <h3>Total Analyses</h3>
+                        <p class="stat-value">{{ total_analyses }}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Positive Cases</h3>
+                        <p class="stat-value">{{ successful_analyses }}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Confidence</h3>
+                        <p class="stat-value">{{ "%.1f"|format(avg_confidence * 100) }}%</p>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <h3>Confidence Trend</h3>
+                        <canvas id="confidenceChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Result Distribution</h3>
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pass data to JavaScript -->
+    <script>
+        // Initialize data from Flask template
+        const trendData = JSON.parse('{{ chart_data | safe }}');
+        const distributionData = {
+            positiveCases: parseInt('{{ successful_analyses }}'),
+            negativeCases: parseInt('{{ total_analyses - successful_analyses }}')
+        };
+        
+        // Confidence Trend Chart
+        const confidenceCtx = document.getElementById('confidenceChart').getContext('2d');
+        new Chart(confidenceCtx, {
+            type: 'line',
+            data: {
+                labels: trendData.labels,
+                datasets: [{
+                    label: 'Confidence Score',
+                    data: trendData.confidence,
+                    borderColor: '#4CAF50',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+
+        // Result Distribution Chart
+        const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+        new Chart(distributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Positive', 'Negative'],
+                datasets: [{
+                    data: [distributionData.positiveCases, distributionData.negativeCases],
+                    backgroundColor: ['#4CAF50', '#f44336']
+                }]
+            },
+            options: {
+                responsive: true
+            }
+        });
+    </script>
+</body>
+</html> 

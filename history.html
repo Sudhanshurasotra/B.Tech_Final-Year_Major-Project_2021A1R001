@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis History - Autism Detection System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <h2>Autism Detection</h2>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Dashboard</a></li>
+                    <li><a href="{{ url_for('analytics') }}">Analytics</a></li>
+                    <li class="active"><a href="{{ url_for('history') }}">History</a></li>
+                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="top-bar">
+                <div class="search-bar">
+                    <input type="text" placeholder="Search analyses...">
+                    <button><i class="fas fa-search"></i></button>
+                </div>
+                <div class="user-info">
+                    <span>Welcome, {{ current_user.username }}</span>
+                </div>
+            </div>
+
+            <div class="content">
+                <h1>Analysis History</h1>
+                
+                <div class="history-filters">
+                    <select id="dateFilter">
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                    <select id="resultFilter">
+                        <option value="all">All Results</option>
+                        <option value="positive">Positive</option>
+                        <option value="negative">Negative</option>
+                    </select>
+                </div>
+
+                <div class="history-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>File</th>
+                                <th>Type</th>
+                                <th>Confidence</th>
+                                <th>Result</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for analysis in analyses %}
+                            <tr>
+                                <td>{{ analysis.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ analysis.file_path }}</td>
+                                <td>{{ analysis.file_type }}</td>
+                                <td>{{ "%.2f"|format(analysis.confidence * 100) }}%</td>
+                                <td>
+                                    <span class="result-badge {{ 'positive' if analysis.confidence > 0.5 else 'negative' }}">
+                                        {{ analysis.result }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" data-analysis-id="{{ analysis.id }}" onclick="viewDetails(this.dataset.analysisId)">View</button>
+                                    <button class="btn btn-sm btn-secondary" data-analysis-id="{{ analysis.id }}" onclick="downloadReport(this.dataset.analysisId)">Download</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Filter functionality
+        document.getElementById('dateFilter').addEventListener('change', filterHistory);
+        document.getElementById('resultFilter').addEventListener('change', filterHistory);
+
+        function filterHistory() {
+            const dateFilter = document.getElementById('dateFilter').value;
+            const resultFilter = document.getElementById('resultFilter').value;
+            
+            // Implement filtering logic here
+            // This would typically involve an API call to get filtered results
+        }
+
+        function viewDetails(analysisId) {
+            // Implement view details functionality
+            // This could open a modal with more information
+            console.log('Viewing details for analysis:', analysisId);
+        }
+
+        function downloadReport(analysisId) {
+            // Show loading overlay
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.id = 'loadingOverlay';
+            loadingOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            loadingOverlay.innerHTML = '<div style="background: white; padding: 20px; border-radius: 8px;">Generating report...</div>';
+            document.body.appendChild(loadingOverlay);
+            
+            // Download the report
+            fetch(`/download_report/${analysisId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to generate report');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Create download link
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `autism_analysis_${analysisId}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    console.error('Error downloading report:', error);
+                    alert('Error generating report. Please try again.');
+                })
+                .finally(() => {
+                    // Remove loading overlay
+                    document.body.removeChild(loadingOverlay);
+                });
+        }
+    </script>
+</body>
+</html> 
